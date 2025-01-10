@@ -2,6 +2,7 @@ import pytest
 import os
 import yaml
 from core.agent import AITernAgent
+import logging
 
 @pytest.fixture
 def test_config(tmp_path):
@@ -45,13 +46,18 @@ def test_agent_initialization(test_config):
     # 清理环境变量
     del os.environ['DEEPSEEK_API_KEY']
 
-def test_implement_test(test_config):
-    # 创建一个简单的测试文件
+def test_implement_test(test_config, caplog):
+    caplog.set_level(logging.DEBUG)
+    
+    # 创建一个带有导入的测试文件
     test_content = """
+from calculator import Calculator
+import math
+
 def test_calculator():
     calc = Calculator()
     assert calc.add(1, 2) == 3
-    assert calc.subtract(5, 3) == 2
+    assert calc.multiply(2, math.pi) > 6
 """
     
     test_file = "test_calculator.py"
@@ -66,9 +72,11 @@ def test_calculator():
         assert os.path.exists(impl_file)
         with open(impl_file, "r") as f:
             impl_content = f.read()
+            print(f"\nGenerated implementation:\n{impl_content}")
             assert "class Calculator" in impl_content
             assert "def add" in impl_content
-            assert "def subtract" in impl_content
+            assert "def multiply" in impl_content
+            assert "import math" in impl_content  # 验证导入被保留
     
     finally:
         # 清理测试文件
