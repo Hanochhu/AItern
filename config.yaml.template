@@ -1,0 +1,15 @@
+# AI Model Configuration
+ai_model:
+  provider: "deepseek"  # 可选: "openai" 或 "deepseek"
+  openai:
+    api_key: "your-openai-api-key-here"
+    model: "gpt-4"
+  deepseek:
+    api_key: "your-deepseek-api-key-here"
+    model: "deepseek-chat"
+    base_url: "https://api.deepseek.com"
+
+# Git Configuration (for future use)
+git:
+  branch_prefix: "aitern-"
+  commit_message: "feat: AI implementation for {test_file}" 
