@@ -6,25 +6,36 @@ from core.agent import AITernAgent
 @pytest.fixture
 def test_config(tmp_path):
     """创建测试配置文件"""
+    # 从实际配置文件读取 API key
+    with open('config.yaml', 'r') as f:
+        real_config = yaml.safe_load(f)
+    
+    # 使用实际的 API key
     config = {
         'ai_model': {
             'provider': 'deepseek',
             'deepseek': {
-                'api_key': os.getenv('DEEPSEEK_API_KEY', 'test_key'),
+                'api_key': real_config['ai_model']['deepseek']['api_key'],
                 'model': 'deepseek-chat',
                 'base_url': 'https://api.deepseek.com'
             }
         }
     }
+    
     config_path = tmp_path / "config.yaml"
     with open(config_path, 'w') as f:
         yaml.dump(config, f)
     return str(config_path)
 
 def test_agent_initialization(test_config):
+    # 从实际配置文件读取 API key 用于比较
+    with open('config.yaml', 'r') as f:
+        real_config = yaml.safe_load(f)
+    real_api_key = real_config['ai_model']['deepseek']['api_key']
+    
     # 测试正确初始化
     agent = AITernAgent(config_path=test_config)
-    assert agent.config.deepseek_api_key == "test_key"
+    assert agent.config.deepseek_api_key == real_api_key
     
     # 测试环境变量覆盖
     os.environ['DEEPSEEK_API_KEY'] = "env_test_key"

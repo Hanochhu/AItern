@@ -1,9 +1,14 @@
 import os
+import logging
 from typing import Optional
 from models.openai_model import OpenAIModel
 from models.deepseek_model import DeepSeekModel
 from languages.python import PythonSupport
 from utils.config import Config
+
+# 配置日志
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class AITernAgent:
     def __init__(self, config_path: Optional[str] = None):
@@ -32,29 +37,25 @@ class AITernAgent:
         self.language_support = PythonSupport()
         
     def implement_test(self, test_file: str) -> str:
-        """根据测试文件生成实现代码
-        
-        Args:
-            test_file: 测试文件路径
-            
-        Returns:
-            str: 生成的实现代码文件路径
-        """
+        """根据测试文件生成实现代码"""
         # 读取测试文件
         with open(test_file, 'r') as f:
             test_code = f.read()
             
         # 解析测试代码
         test_info = self.language_support.parse_test(test_code)
+        logger.debug(f"Parsed test info: {test_info}")
         
         # 生成实现代码
         implementation = self.ai_model.generate_implementation(
             test_code=test_code,
             language='python'
         )
+        logger.debug(f"Generated implementation:\n{implementation}")
         
         # 验证实现代码
         if not self.language_support.validate_implementation(implementation):
+            logger.error(f"Invalid implementation:\n{implementation}")
             raise ValueError("Generated implementation is not valid Python code")
             
         # 保存实现代码

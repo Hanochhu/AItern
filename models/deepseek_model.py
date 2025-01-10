@@ -1,4 +1,5 @@
-import openai  # DeepSeek 使用 OpenAI 兼容接口
+import openai
+import re
 from typing import Optional
 
 try:
@@ -17,13 +18,34 @@ class DeepSeekModel(AIModel):
         )
         self.model = model
         
+    def _extract_code(self, content: str) -> str:
+        """从 Markdown 格式的回答中提取代码部分"""
+        # 尝试匹配 ```python ... ``` 格式
+        pattern = r"```python\n(.*?)\n```"
+        matches = re.findall(pattern, content, re.DOTALL)
+        if matches:
+            return matches[0].strip()
+            
+        # 如果没有找到 Python 代码块，尝试匹配任意代码块
+        pattern = r"```\n(.*?)\n```"
+        matches = re.findall(pattern, content, re.DOTALL)
+        if matches:
+            return matches[0].strip()
+            
+        # 如果没有代码块，返回原始内容
+        return content.strip()
+        
     def generate_implementation(self, test_code: str, language: str) -> str:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {
                     "role": "system",
-                    "content": f"你是一个专业的{language}开发者。请根据测试代码生成符合要求的实现代码。"
+                    "content": (
+                        f"你是一个专业的{language}开发者。"
+                        "请根据测试代码生成实现代码。"
+                        "只返回代码，不需要任何解释。"
+                    )
                 },
                 {
                     "role": "user",
@@ -32,4 +54,5 @@ class DeepSeekModel(AIModel):
             ]
         )
         
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        return self._extract_code(content)
