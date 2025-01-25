@@ -41,6 +41,16 @@ class DeepSeekModel(AIModel):
         language: str,
         context: Optional[Dict[str, Any]] = None
     ) -> str:
+        """根据测试代码生成实现代码
+        
+        Args:
+            test_code: 测试代码内容
+            language: 编程语言
+            context: 项目上下文信息
+            
+        Returns:
+            str: 生成的实现代码
+        """
         # 构建系统提示
         system_content = [
             f"你是一个专业的{language}开发者。",
@@ -57,10 +67,26 @@ class DeepSeekModel(AIModel):
         ]
         
         # 添加上下文信息
-        if context and context['imports']:
-            user_content.append("\n需要的导入:")
-            for imp in context['imports']:
-                user_content.append(f"- {imp}")
+        if context:
+            if context.get('test_content'):
+                user_content.append(f"\n完整测试文件内容:\n{context['test_content']}")
+            if context.get('imports'):
+                user_content.append("\n需要的导入:")
+                for imp in context['imports']:
+                    user_content.append(f"- {imp}")
+            if context.get('style_guide'):
+                user_content.append("\n代码风格指南:")
+                for rule, example in context['style_guide'].items():
+                    user_content.append(f"- {rule}: {example}")
+            
+            # 如果有之前失败的尝试，添加相关信息
+            if context.get('previous_attempt'):
+                user_content.append("\n之前的尝试失败了，这是第 {} 次尝试。".format(
+                    context['previous_attempt']['attempt_number']
+                ))
+                user_content.append("之前的实现：")
+                user_content.append(context['previous_attempt']['implementation'])
+                user_content.append("\n请分析失败原因并提供改进的实现。")
         
         response = self.client.chat.completions.create(
             model=self.model,

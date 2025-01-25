@@ -56,4 +56,24 @@ class Config:
         return (
             os.getenv('DEEPSEEK_BASE_URL') or 
             self.config.get('ai_model', {}).get('deepseek', {}).get('base_url', 'https://api.deepseek.com')
-        ) 
+        )
+    
+    def get(self, path: str, default: Any = None) -> Any:
+        """通过路径获取配置值
+        
+        Args:
+            path: 以点分隔的配置路径，如 'git.reviewers'
+            default: 默认值
+            
+        Returns:
+            配置值或默认值
+        """
+        current = self.config
+        for key in path.split('.'):
+            if isinstance(current, dict):
+                current = current.get(key)
+                if current is None:
+                    return default
+            else:
+                return default
+        return current 
