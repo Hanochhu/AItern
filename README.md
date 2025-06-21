@@ -36,7 +36,7 @@ cd 你的项目目录
 aitern . init
 ```
 
-这会在你的项目目录下创建 `.aitern/config.json` 文件，你可以根据需要修改配置。
+这会在你的项目目录下创建一个 `env` 文件，你可以根据你的环境进行配置。项目中提供了一个 `.env` 文件作为模板。请记得将 `env` 文件加入到你的 `.gitignore` 中，以避免将密钥等敏感信息上传到代码仓库。
 
 ### 2. 编写测试用例
 
@@ -96,31 +96,38 @@ aitern . explore --tests test_function_one test_function_two
 aitern . explore --max-iterations 20
 ```
 
-#### 使用自定义配置文件
+## 配置说明
 
-```bash
-aitern . explore --config custom_config.json
-```
+AItern通过项目根目录下的 `env` 文件进行配置。执行 `aitern . init` 时，会从 `.env` 模板文件复制生成 `env` 文件。
 
-## 配置文件说明
+一个典型的 `.env` 模板文件内容如下：
 
-AItern的配置文件（`.aitern/config.json`）包含以下内容：
+```dotenv
+# AItern Configuration Template
 
-```json
-{
-  "test_dir": "tests",                     // 测试目录
-  "record_dir": ".aitern/explorations",    // 探索记录目录
-  "max_iterations": 10,                    // 最大迭代次数
-  "ai": {
-    "model": "gpt-4",                      // 使用的AI模型
-    "api_key_env": "AITERN_API_KEY",       // API密钥环境变量名
-    "temperature": 0.7                     // 生成多样性
-  },
-  "exploration": {
-    "search_depth": 3,                     // 代码搜索深度
-    "modification_strategy": "incremental" // 代码修改策略
-  }
-}
+# 测试目录
+AITERN_TEST_DIR="tests"
+
+# 探索记录目录
+AITERN_RECORD_DIR="aitern_explorations"
+
+# 最大迭代次数
+AITERN_MAX_ITERATIONS=10
+
+# 使用的AI模型 (例如, gpt-4, gpt-3.5-turbo)
+AITERN_AI_MODEL="gpt-4"
+
+# 你的AI模型API密钥
+AITERN_API_KEY="YOUR_API_KEY_HERE"
+
+# AI模型生成的多样性 (0.0 到 1.0)
+AITERN_AI_TEMPERATURE=0.7
+
+# 代码探索深度
+AITERN_EXPLORATION_SEARCH_DEPTH=3
+
+# 代码修改策略 (例如, incremental)
+AITERN_EXPLORATION_MODIFICATION_STRATEGY="incremental"
 ```
 
 ## 工作流程
@@ -140,8 +147,7 @@ AItern/
 ├── src/                # 源代码
 │   ├── core/          # 核心功能模块
 │   ├── agents/        # AI agent实现
-│   ├── utils/         # 工具函数
-│   └── config/        # 配置文件
+│   └── utils/         # 工具函数
 ├── tests/             # 测试用例
 ├── docs/              # 文档
 ├── requirements.txt   # 项目依赖

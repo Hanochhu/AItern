@@ -1,119 +1,89 @@
 import os
-import json
-import logging
 from typing import Dict, Any, Optional
-from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
+import logging
 
 logger = logging.getLogger(__name__)
 
 class ConfigManager:
-    """配置管理模块，负责加载和管理配置"""
-    
-    DEFAULT_CONFIG = {
-        "test_dir": "tests",                      # 测试目录
-        "record_dir": ".aitern/explorations",     # 探索记录目录
-        "max_iterations": 10,                     # 最大迭代次数
-        "ai": {
-            "model": "gpt-4",                     # 使用的AI模型
-            "api_key_env": "AITERN_API_KEY",      # API密钥环境变量名
-            "temperature": 0.7                    # 生成多样性
-        },
-        "exploration": {
-            "search_depth": 3,                    # 代码搜索深度
-            "modification_strategy": "incremental" # 代码修改策略
-        }
-    }
-    
-    def __init__(self, config_path: Optional[str] = None):
+    """配置管理模块，负责从环境变量和env文件加载配置"""
+
+    def __init__(self, project_path: Optional[str] = None):
         """
         初始化配置管理器
         
         Args:
-            config_path: 配置文件路径，为None则使用默认配置
+            project_path: 项目根目录路径
         """
-        self.config = self.DEFAULT_CONFIG.copy()
-        
-        if config_path:
-            self.load_config(config_path)
-    
-    def load_config(self, config_path: str) -> bool:
+        self.config: Dict[str, Any] = {}
+        self._load_config(project_path)
+
+    def _load_config(self, project_path: Optional[str] = None):
         """
-        加载配置文件
-        
-        Args:
-            config_path: 配置文件路径
-            
-        Returns:
-            bool: 是否成功加载
+        从env文件或环境变量加载配置。
+        env文件中的配置会覆盖系统环境变量。
         """
-        path = Path(config_path)
-        
-        if not path.exists():
-            logger.warning(f"配置文件不存在: {config_path}")
-            return False
-        
-        try:
-            with open(path) as f:
-                user_config = json.load(f)
-                self._update_config(user_config)
-            logger.info(f"成功加载配置: {config_path}")
-            return True
-        except Exception as e:
-            logger.error(f"加载配置失败: {e}")
-            return False
-    
-    def _update_config(self, user_config: Dict[str, Any]) -> None:
-        """递归更新配置"""
-        for key, value in user_config.items():
-            if key in self.config and isinstance(value, dict) and isinstance(self.config[key], dict):
-                self._update_config_dict(self.config[key], value)
+        # 默认值
+        self.config = {
+            "test_dir": "tests",
+            "record_dir": "aitern_explorations",
+            "max_iterations": 10,
+            "ai_model": "gpt-4",
+            "ai_temperature": 0.7,
+            "exploration_search_depth": 3,
+            "exploration_modification_strategy": "incremental",
+            "api_key": None
+        }
+
+        env_path = None
+        if project_path:
+            env_path = os.path.join(project_path, 'env')
+            if os.path.exists(env_path):
+                load_dotenv(dotenv_path=env_path, override=True)
             else:
-                self.config[key] = value
-    
-    def _update_config_dict(self, target: Dict[str, Any], source: Dict[str, Any]) -> None:
-        """递归更新字典"""
-        for key, value in source.items():
-            if key in target and isinstance(value, dict) and isinstance(target[key], dict):
-                self._update_config_dict(target[key], value)
-            else:
-                target[key] = value
-    
+                logger.warning(f"env配置文件不存在: {env_path}，将只使用环境变量和默认值。")
+        else:
+            # 如果没有项目路径，则尝试在当前目录或上层目录寻找env文件
+            env_path = find_dotenv('env', usecwd=True)
+            if env_path:
+                load_dotenv(dotenv_path=env_path, override=True)
+
+        self.config["test_dir"] = os.getenv("AITERN_TEST_DIR", self.config["test_dir"])
+        self.config["record_dir"] = os.getenv("AITERN_RECORD_DIR", self.config["record_dir"])
+        self.config["max_iterations"] = int(os.getenv("AITERN_MAX_ITERATIONS", self.config["max_iterations"]))
+        self.config["ai_model"] = os.getenv("AITERN_AI_MODEL", self.config["ai_model"])
+        self.config["api_key"] = os.getenv("AITERN_API_KEY", self.config["api_key"])
+        self.config["ai_temperature"] = float(os.getenv("AITERN_AI_TEMPERATURE", self.config["ai_temperature"]))
+        self.config["exploration_search_depth"] = int(os.getenv("AITERN_EXPLORATION_SEARCH_DEPTH", self.config["exploration_search_depth"]))
+        self.config["exploration_modification_strategy"] = os.getenv("AITERN_EXPLORATION_MODIFICATION_STRATEGY", self.config["exploration_modification_strategy"])
+        
+        logger.info(f"配置已加载。测试目录: {self.config['test_dir']}")
+
     def get(self, key: str, default: Any = None) -> Any:
         """获取配置值"""
         return self.config.get(key, default)
-    
+
     def get_nested(self, *keys: str, default: Any = None) -> Any:
-        """获取嵌套配置值"""
-        current = self.config
-        for key in keys:
-            if key not in current:
-                return default
-            current = current[key]
-        return current
+        """为了兼容性，模拟获取嵌套配置值"""
+        if len(keys) == 2 and keys[0] == 'ai':
+            if keys[1] == 'model':
+                return self.config.get('ai_model', default)
+            if keys[1] == 'temperature':
+                return self.config.get('ai_temperature', default)
+            if keys[1] == 'api_key_env':
+                # api_key_env的概念被移除了，直接返回api_key
+                return self.config.get('api_key', default)
+        
+        if len(keys) == 2 and keys[0] == 'exploration':
+            if keys[1] == 'search_depth':
+                return self.config.get('exploration_search_depth', default)
+            if keys[1] == 'modification_strategy':
+                return self.config.get('exploration_modification_strategy', default)
+
+        key = '_'.join(keys)
+        return self.config.get(key, default)
     
     def set(self, key: str, value: Any) -> None:
         """设置配置值"""
         self.config[key] = value
-    
-    def save_config(self, config_path: str) -> bool:
-        """
-        保存配置到文件
-        
-        Args:
-            config_path: 配置文件路径
-            
-        Returns:
-            bool: 是否成功保存
-        """
-        path = Path(config_path)
-        
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, 'w') as f:
-                json.dump(self.config, f, indent=2)
-            logger.info(f"成功保存配置到: {config_path}")
-            return True
-        except Exception as e:
-            logger.error(f"保存配置失败: {e}")
-            return False
 

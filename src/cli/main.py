@@ -3,6 +3,7 @@ import argparse
 import os
 import sys
 import logging
+import shutil
 from typing import Dict, Any
 
 from src.core.aitern_manager import AIternManager
@@ -60,49 +61,48 @@ def parse_args():
     
     # 初始化配置命令
     init_parser = subparsers.add_parser('init', help='初始化配置')
-    init_parser.add_argument(
-        '--output', '-o',
-        default='.aitern/config.json',
-        help='配置文件输出路径'
-    )
     
     return parser.parse_args()
 
-def load_config(config_path: str = None) -> Dict[str, Any]:
-    """加载配置文件"""
-    config_manager = ConfigManager(config_path)
+def load_config(project_path: str) -> Dict[str, Any]:
+    """加载配置"""
+    config_manager = ConfigManager(project_path)
     return config_manager.config
 
 def main():
     """主函数"""
     args = parse_args()
     
-    if not os.path.exists(args.project_path):
-        logger.error(f"项目路径不存在: {args.project_path}")
+    project_path = args.project_path
+    
+    if not os.path.exists(project_path):
+        logger.error(f"项目路径不存在: {project_path}")
         sys.exit(1)
     
     if args.command == 'init':
         # 初始化配置文件
-        output_path = os.path.join(args.project_path, args.output)
-        config_manager = ConfigManager()
-        if config_manager.save_config(output_path):
-            logger.info(f"配置文件已创建: {output_path}")
-        else:
-            logger.error(f"无法创建配置文件: {output_path}")
+        template_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+        output_path = os.path.join(project_path, 'env')
+        
+        if not os.path.exists(template_path):
+            # 如果仓库中没有.env模板，就创建一个空的env文件
+            with open(output_path, 'w') as f:
+                pass
+            logger.info(f"项目根目录下未找到 .env 模板, 已在项目下创建空的 env 文件: {output_path}")
+            logger.info("请向env文件中添加您的配置。")
+            return
+
+        try:
+            shutil.copy(template_path, output_path)
+            logger.info(f"配置文件已从模板创建: {output_path}")
+            logger.info("请根据需要修改env文件，并将env文件添加到.gitignore中。")
+        except Exception as e:
+            logger.error(f"无法创建配置文件: {e}")
             sys.exit(1)
         return
     
     # 加载配置
-    config_path = None
-    if hasattr(args, 'config') and args.config:
-        config_path = args.config
-    else:
-        # 尝试查找默认配置
-        default_config = os.path.join(args.project_path, '.aitern/config.json')
-        if os.path.exists(default_config):
-            config_path = default_config
-    
-    config = load_config(config_path)
+    config = load_config(project_path)
     
     # 如果命令行指定了最大迭代次数，覆盖配置
     if hasattr(args, 'max_iterations') and args.max_iterations:
@@ -110,7 +110,7 @@ def main():
     
     try:
         # 初始化AItern管理器
-        manager = AIternManager(args.project_path, config)
+        manager = AIternManager(project_path, config)
         
         if args.command == 'explore':
             # 开始探索
@@ -122,7 +122,7 @@ def main():
             
             if result['success']:
                 logger.info(f"探索成功! 分支: {result['branch_name']}")
-                logger.info(f"可以使用 'aitern {args.project_path} apply {result['exploration_id']}' 应用探索结果")
+                logger.info(f"可以使用 'aitern {project_path} apply {result['exploration_id']}' 应用探索结果")
             else:
                 logger.warning(f"探索未能解决所有测试失败，迭代次数: {result['iterations']}")
                 logger.info(f"尝试的探索分支: {result['branch_name']}")

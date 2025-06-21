@@ -23,3 +23,6 @@ gitpython>=3.1.24
 # 工具
 tqdm>=4.62.3
 loguru>=0.5.3
+
+# 新引入的依赖
+python-dotenv
